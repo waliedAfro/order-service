@@ -1,0 +1,4 @@
+CREATE SEQUENCE customer_number_seq
+    START WITH 1
+    INCREMENT BY 1
+    CACHE 50;

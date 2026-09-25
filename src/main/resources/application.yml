@@ -1,0 +1,10 @@
+outbox:
+  scheduler:
+    delay: 5000
+
+
+kafka:
+  server : localhost:9092
+
+  topics:
+    order-created : 
