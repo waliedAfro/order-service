@@ -19,22 +19,23 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 @Entity
-@Table(
-    name = "outbox_events",
-    indexes = {
+@Table(name = "outbox_events", indexes = {
         @Index(
-            name = "idx_outbox_status_created",
-            columnList = "status, created_at"
+            name = "idx_outbox_status_retry_created", 
+            columnList = "status, next_retry_at, created_at") ,
+        
+        @Index(
+            name = "idx_outbox_processing_at",
+            columnList = "status, processing_at"
         )
-    }
-)
-@Setter 
-@Getter 
-@NoArgsConstructor 
-@AllArgsConstructor 
+})
+@Setter
+@Getter
+@NoArgsConstructor
+@AllArgsConstructor
 public class OutboxEvent {
 
-    @Id
+     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
@@ -58,13 +59,16 @@ public class OutboxEvent {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 30)
-    private OutboxStatus status;
+    private OutboxStatus status = OutboxStatus.PENDING;
 
     @Column(name = "retry_count", nullable = false)
     private int retryCount = 0;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
+
+    @Column(name = "processing_at")
+    private Instant processingAt;
 
     @Column(name = "published_at")
     private Instant publishedAt;
@@ -77,10 +81,15 @@ public class OutboxEvent {
 
     @PrePersist
     protected void onCreate() {
+
         createdAt = Instant.now();
 
         if (status == null) {
             status = OutboxStatus.PENDING;
+        }
+
+        if (retryCount < 0) {
+            retryCount = 0;
         }
     }
 }

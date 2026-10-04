@@ -16,11 +16,11 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.orders.order.dto.OrderCreateRequest;
-import com.orders.order.dto.OrderResponse;
-import com.orders.order.dto.OrderUpdateRequest;
-import com.orders.order.model.OrderStatus;
-import com.orders.order.service.OrderService;
+import com.orders.domain.dto.OrderCreateRequest;
+import com.orders.domain.dto.OrderResponse;
+import com.orders.domain.dto.OrderUpdateRequest;
+import com.orders.domain.model.OrderStatus;
+import com.orders.service.OrderService;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;

@@ -1,10 +1,39 @@
+spring:
+  application:
+    name: order-service # for Order Service
+
+  kafka:
+    bootstrap-servers: localhost:29092
+
+    topics:
+      order-created: order.created
+      payment-completed: payment.completed
+      payment-failed: payment.failed
+
+    producer:
+      acks: all
+      retries: 2147483647
+      enable-idempotence: true
+      compression-type: zstd
+      linger-ms: 20
+      batch-size: 65536
+      max-in-flight-requests-per-connection: 5
+      delivery-timeout-ms: 120000
+      request-timeout-ms: 30000
+      #transaction-id-prefix: attendance-
+
+    consumer:
+      group-id: order-service
+      enable-auto-commit: false
+      auto-offset-reset: earliest
+      isolation-level: read_committed
+      max-poll-records: 100
+
+    
+    properties:
+      spring.json.trusted.packages: com.orders.common.events.*
+      spring.json.use.type.headers: false
+
 outbox:
   scheduler:
     delay: 5000
-
-
-kafka:
-  server : localhost:9092
-
-  topics:
-    order-created : 
