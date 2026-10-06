@@ -13,6 +13,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.orders.common.events.OrderCreatedEvent;
 import com.orders.common.events.OrderCreatedItem;
 import com.orders.domain.model.Order;
+import com.orders.domain.model.PaymentMethod;
 import com.orders.outbox.OutboxEvent;
 import com.orders.outbox.OutboxEventRepository;
 
@@ -29,6 +30,7 @@ public class OutboxEventPublisher implements  EventPublisher{
 
     private final OutboxEventRepository outboxEventRepository;
     private final ObjectMapper objectMapper;
+   
 
     @Override
     public void publishOrderCreated(Order order) {
@@ -56,7 +58,8 @@ public class OutboxEventPublisher implements  EventPublisher{
                         order.getCustomerId(),
                         order.getTotalAmount(),
                         order.getCurrency(),
-                        eventItems
+                        eventItems,
+                        PaymentMethod.CARD
                 );
 
         // -----------------------------------------
@@ -78,6 +81,7 @@ public class OutboxEventPublisher implements  EventPublisher{
             outboxEvent.setTopic(orderCreatedTopic);
             outboxEvent.setEventKey(order.getId().toString());
             outboxEvent.setPayload(payload);
+            
             
 
         // -----------------------------------------

@@ -17,5 +17,6 @@ public record PaymentCompletedEvent(
         String transactionId,
 
         Instant occurredAt 
+
         
 ) {}

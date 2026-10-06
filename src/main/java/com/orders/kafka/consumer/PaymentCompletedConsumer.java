@@ -16,7 +16,7 @@ public class PaymentCompletedConsumer {
 
     private final OrderService orderService;
 
-    @KafkaListener(topics = "${kafka.topics.payment-completed}",groupId = "order-service",
+    @KafkaListener(topics = "${spring.kafka.topics.payment-completed}",groupId = "order-service",
             containerFactory ="paymentCompletedKafkaListenerContainerFactory")
     public void consume(PaymentCompletedEvent event)throws Exception {
 

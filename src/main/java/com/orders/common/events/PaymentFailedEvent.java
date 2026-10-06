@@ -16,4 +16,5 @@ public record PaymentFailedEvent(
     String reason,
 
     Instant occurredAt 
+
 ) {}

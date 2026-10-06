@@ -15,7 +15,7 @@ public class PaymentFailedConsumer {
 
     private final OrderService orderService;
 
-    @KafkaListener(topics = "${kafka.topics.payment-failed}",groupId = "order-service",
+    @KafkaListener(topics = "${spring.kafka.topics.payment-failed}",groupId = "order-service",
             containerFactory ="paymentFailedKafkaListenerContainerFactory")
     public void consume(PaymentFailedEvent event) throws Exception {
 

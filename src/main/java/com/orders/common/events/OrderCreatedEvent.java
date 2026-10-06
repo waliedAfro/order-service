@@ -5,6 +5,8 @@ import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
+import com.orders.domain.model.PaymentMethod;
+
 public record OrderCreatedEvent(
         UUID eventId,
         
@@ -22,6 +24,9 @@ public record OrderCreatedEvent(
 
         String currency ,
         
-        List<OrderCreatedItem> items
+        List<OrderCreatedItem> items ,
+
+        PaymentMethod paymentMethod 
+      
 
 ) {}

@@ -1,6 +1,7 @@
 package com.orders.service;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
@@ -212,6 +213,7 @@ public class OrderServiceImpl implements OrderService {
                 ProcessedEvent processedEvent = ProcessedEvent.builder()
                                 .eventId(event.eventId())
                                 .consumerName(PAYMENT_COMPLETED_CONSUMER)
+                                .processedAt(Instant.now())
                                 .build();
                 processedEventRepository.save(processedEvent);
 
