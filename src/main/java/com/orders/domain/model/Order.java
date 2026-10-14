@@ -24,25 +24,20 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import lombok.Builder.Default;
 import jakarta.persistence.Index;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 
 @Entity
-@Table(name = "orders", 
-indexes = {
+@Table(name = "orders", indexes = {
         @Index(name = "idx_order_number", columnList = "order_number"),
         @Index(name = "idx_customer_id", columnList = "customer_id"),
         @Index(name = "idx_order_status", columnList = "status")
-} ,
-uniqueConstraints = {
-        @UniqueConstraint(
-            name = "uk_order_number",
-            columnNames = {"order_number"}
-        )
-    }
-)
+}, uniqueConstraints = {
+        @UniqueConstraint(name = "uk_order_number", columnNames = { "order_number" })
+})
 @Setter
 @Getter
 @AllArgsConstructor
@@ -83,6 +78,19 @@ public class Order {
     @Column(name = "payment_failure_reason")
     private String paymentFailureReason;
 
+    @Default
+    @Enumerated(EnumType.STRING)
+    @Column(name = "inventory_status", nullable = false)
+    private InventoryStatus inventoryStatus = InventoryStatus.PENDING;
+
+    @Default
+    @Enumerated(EnumType.STRING)
+    @Column(name = "payment_status", nullable = false)
+    private PaymentStatus paymentStatus = PaymentStatus.PENDING;
+
+    @Column(name = "inventory_failure_reason")
+    private String inventoryFailureReason;
+
     @PrePersist
     protected void onCreate() {
         LocalDateTime now = LocalDateTime.now();
@@ -92,6 +100,7 @@ public class Order {
         if (status == null) {
             status = OrderStatus.CREATED;
         }
+
     }
 
     @PreUpdate
@@ -124,72 +133,202 @@ public class Order {
     // PAYMENT STATE TRANSITIONS
     // ============================================================
 
-    /**
-     * Move the order into PAYMENT_PENDING.
-     *
-     * Valid transitions:
-     *
-     * CREATED -> PAYMENT_PENDING
-     *
-     * This should normally happen after the OrderCreated
-     * event has been accepted for payment processing.
-     */
     public void markPaymentPending() {
 
-        if (status != OrderStatus.CREATED) {
+        if (status == OrderStatus.PAYMENT_PENDING) {
+            return;
+        }
 
+        ensureOrderIsNotFinal();
+
+        if (inventoryStatus != InventoryStatus.RESERVED) {
             throw new InvalidOrderStateException(
-                    "Cannot move order " + id +
-                            " to PAYMENT_PENDING from status " +
-                            status);
+                    "Cannot move order " + orderNumber
+                            + " to PAYMENT_PENDING before inventory is reserved");
+        }
+
+        if (paymentStatus != PaymentStatus.PENDING) {
+            throw new InvalidOrderStateException(
+                    "Cannot start payment for order " + orderNumber
+                            + " from payment status " + paymentStatus);
         }
 
         status = OrderStatus.PAYMENT_PENDING;
     }
 
     /**
-     * Mark the order as PAID.
+     * Records a successful payment.
      *
-     * Valid transition:
+     * PENDING -> COMPLETED
      *
-     * PAYMENT_PENDING -> PAID
+     * The centralized state machine decides whether the order
+     * can be confirmed.
      */
-    public void markPaid() {
+    public void markPaymentCompleted() {
 
-        if (status != OrderStatus.PAYMENT_PENDING) {
-
-            throw new InvalidOrderStateException(
-                    "Cannot mark order " + id +
-                            " as PAID from status " +
-                            status);
+        // Idempotent duplicate event.
+        if (paymentStatus == PaymentStatus.COMPLETED) {
+            return;
         }
 
-        status = OrderStatus.PAID;
+        ensureOrderIsNotFinal();
 
+        if (paymentStatus != PaymentStatus.PENDING) {
+            throw new InvalidOrderStateException(
+                    "Cannot complete payment for order " + orderNumber
+                            + " from payment status " + paymentStatus);
+        }
+
+        paymentStatus = PaymentStatus.COMPLETED;
         paymentFailureReason = null;
+
+        evaluateFinalStatus();
     }
 
     /**
-     * Mark the order payment as failed.
+     * Records a failed payment.
      *
-     * Valid transition:
+     * PENDING -> FAILED
      *
-     * PAYMENT_PENDING -> PAYMENT_FAILED
+     * A definitive payment failure cancels the order.
      */
     public void markPaymentFailed(String reason) {
 
-        if (status != OrderStatus.PAYMENT_PENDING) {
-
-            throw new InvalidOrderStateException(
-                    "Cannot mark payment as FAILED for order "
-                            + id
-                            + " from status "
-                            + status);
+        // Idempotent duplicate event.
+        if (paymentStatus == PaymentStatus.FAILED) {
+            return;
         }
 
-        status = OrderStatus.PAYMENT_FAILED;
+        ensureOrderIsNotFinal();
 
-        paymentFailureReason = reason;
+        if (paymentStatus != PaymentStatus.PENDING) {
+            throw new InvalidOrderStateException(
+                    "Cannot fail payment for order " + orderNumber
+                            + " from payment status " + paymentStatus);
+        }
+
+        paymentStatus = PaymentStatus.FAILED;
+
+        paymentFailureReason = reason == null || reason.isBlank()
+                ? "Payment failed"
+                : reason;
+
+        evaluateFinalStatus();
     }
+
+    // Optional convenience overload if your consumer needs it.
+    public void markPaymentFailed() {
+        markPaymentFailed("Payment failed");
+    }
+
+    /**
+     * Backward-compatible method for existing callers.
+     * Prefer markPaymentCompleted() in new code.
+     */
+    @Deprecated
+    public void markPaid() {
+        markPaymentCompleted();
+    }
+
+    // ============================================================
+    // INVENTORY STATE TRANSITIONS
+    // ============================================================
+
+    public void markInventoryReserved() {
+
+        // Duplicate event.
+        if (inventoryStatus == InventoryStatus.RESERVED) {
+            return;
+        }
+
+        ensureOrderIsNotFinal();
+
+        if (inventoryStatus != InventoryStatus.PENDING) {
+            throw new InvalidOrderStateException(
+                    "Cannot reserve inventory for order " + orderNumber
+                            + " from inventory status " + inventoryStatus);
+        }
+
+        inventoryStatus = InventoryStatus.RESERVED;
+        inventoryFailureReason = null;
+
+        evaluateFinalStatus();
+    }
+
+    public void markInventoryReservationFailed(String reason) {
+
+        // Duplicate event.
+        if (inventoryStatus == InventoryStatus.FAILED) {
+            return;
+        }
+
+        ensureOrderIsNotFinal();
+
+        if (inventoryStatus != InventoryStatus.PENDING) {
+            throw new InvalidOrderStateException(
+                    "Cannot fail inventory reservation for order " + orderNumber
+                            + " from inventory status " + inventoryStatus);
+        }
+
+        inventoryStatus = InventoryStatus.FAILED;
+
+        inventoryFailureReason = reason == null || reason.isBlank()
+                ? "Inventory reservation failed"
+                : reason;
+
+        evaluateFinalStatus();
+    }
+
+    // ============================================================
+// CENTRALIZED ORDER STATE MACHINE
+// ============================================================
+
+private void evaluateFinalStatus() {
+
+    // A final order must never be reopened.
+    if (isFinal()) {
+        return;
+    }
+
+    // Any definitive prerequisite failure cancels the order.
+    if (paymentStatus == PaymentStatus.FAILED
+            || inventoryStatus == InventoryStatus.FAILED) {
+
+        status = OrderStatus.CANCELLED;
+        return;
+    }
+
+    // Confirm only when both prerequisites have succeeded.
+    if (paymentStatus == PaymentStatus.COMPLETED
+            && inventoryStatus == InventoryStatus.RESERVED) {
+
+        status = OrderStatus.CONFIRMED;
+        return;
+    }
+
+    // Maintain the inventory milestone while waiting for payment.
+    if (inventoryStatus == InventoryStatus.RESERVED
+            && paymentStatus == PaymentStatus.PENDING
+            && status == OrderStatus.CREATED) {
+
+        status = OrderStatus.INVENTORY_RESERVED;
+    }
+}
+
+private boolean isFinal() {
+
+    return status == OrderStatus.CONFIRMED
+            || status == OrderStatus.CANCELLED
+            || status == OrderStatus.COMPLETED;
+}
+
+private void ensureOrderIsNotFinal() {
+
+    if (isFinal()) {
+        throw new InvalidOrderStateException(
+                "Cannot transition final order " + orderNumber
+                        + " from status " + status);
+    }
+}
 
 }

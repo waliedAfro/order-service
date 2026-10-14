@@ -42,65 +42,6 @@ public class KafkaConfig {
         return props;
     }
 
-    // --- Consumer Factory for PaymentCompletedEvent ---
-
-    @Bean
-    public ConsumerFactory<String, PaymentCompletedEvent> paymentCompletedConsumerFactory() {
-
-         JacksonJsonDeserializer<PaymentCompletedEvent> 
-                    jsonDeserializer = new JacksonJsonDeserializer<>(PaymentCompletedEvent.class);
-
-        jsonDeserializer.addTrustedPackages("com.orders.common.events.*");
-        jsonDeserializer.setUseTypeHeaders(false); // Set to false if producer doesn't send Spring Kafka type headers
-
-        return new DefaultKafkaConsumerFactory<>(
-                baseConsumerProperties(),
-                new StringDeserializer(),
-                jsonDeserializer
-        );
-    }
-
-    @Bean
-    public ConcurrentKafkaListenerContainerFactory<String, PaymentCompletedEvent> paymentCompletedKafkaListenerContainerFactory(
-            ConsumerFactory<String, PaymentCompletedEvent> paymentCompletedConsumerFactory) {
-
-        ConcurrentKafkaListenerContainerFactory<String, PaymentCompletedEvent> factory = 
-                new ConcurrentKafkaListenerContainerFactory<>();
-        factory.setConsumerFactory(paymentCompletedConsumerFactory);
-        return factory;
-    }
-
- 
-
-    // --- Consumer Factory for PaymentFailedEvent ---
-
-    @Bean
-    public ConsumerFactory<String, PaymentFailedEvent> paymentFailedConsumerFactory() {
-
-        JacksonJsonDeserializer<PaymentFailedEvent> 
-                jsonDeserializer = new JacksonJsonDeserializer<>(PaymentFailedEvent.class);
-
-        jsonDeserializer.addTrustedPackages("com.orders.common.events.*");
-        jsonDeserializer.setUseTypeHeaders(false);
-
-        return new DefaultKafkaConsumerFactory<>(
-                baseConsumerProperties(),
-                new StringDeserializer(),
-                jsonDeserializer
-        );
-    }
-
-    @Bean
-    public ConcurrentKafkaListenerContainerFactory<String, PaymentFailedEvent> paymentFailedKafkaListenerContainerFactory(
-            ConsumerFactory<String, PaymentFailedEvent> paymentFailedConsumerFactory) {
-
-        ConcurrentKafkaListenerContainerFactory<String, PaymentFailedEvent> factory = 
-                new ConcurrentKafkaListenerContainerFactory<>();
-        factory.setConsumerFactory(paymentFailedConsumerFactory);
-        return factory;
-    }
-
-
     @Bean
     public ProducerFactory<String, String> producerFactory() {
 

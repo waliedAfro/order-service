@@ -65,7 +65,7 @@ public class OrderServiceImpl implements OrderService {
 
                 Order order = Order.builder()
                                 .customerId(request.customerId())
-                                .status(OrderStatus.PAYMENT_PENDING)
+                                .status(OrderStatus.CREATED)
                                 .orderNumber(orderNumber)
                                 .totalAmount(BigDecimal.ZERO)
                                 .currency(request.currency().toUpperCase())
@@ -201,7 +201,7 @@ public class OrderServiceImpl implements OrderService {
                 // -----------------------------------------
                 // 3. Update Order
                 // -----------------------------------------
-                order.markPaid();
+                order.markPaymentCompleted();
                 orderRepository.save(order);
 
                 // -----------------------------------------
@@ -310,6 +310,22 @@ public class OrderServiceImpl implements OrderService {
                 String date = LocalDate.now().toString().replace("-", "");
                 String suffix = UUID.randomUUID().toString().substring(0, 6).toUpperCase();
                 return "ORD-" + date + "-" + suffix;
+        }
+
+        @Transactional
+        @Override
+        public void markInventoryReserved(UUID orderId) {
+                Order order = orderRepository.findById(orderId).orElseThrow(() -> new OrderNotFoundException(orderId));
+                order.markInventoryReserved();
+                orderRepository.save(order);
+        }
+
+        @Transactional
+        @Override
+        public void markInventoryReservationFailed(UUID orderId, String reason) {
+                Order order = orderRepository.findById(orderId).orElseThrow(() -> new OrderNotFoundException(orderId));
+                order.markInventoryReservationFailed(reason);
+                orderRepository.save(order);
         }
 
 }

@@ -9,6 +9,8 @@ spring:
       order-created: order.created
       payment-completed: payment.completed
       payment-failed: payment.failed
+      inventory-reserved : inventory.reserved
+      inventory-reservation-failed: inventory.reservation.failed
 
     producer:
       acks: all

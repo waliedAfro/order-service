@@ -31,4 +31,9 @@ public interface OrderService {
     void processPaymentCompleted(PaymentCompletedEvent event);
 
     void processPaymentFailed(PaymentFailedEvent event);
+
+    void markInventoryReserved(UUID orderId) ;
+
+     void markInventoryReservationFailed(UUID orderId, String reason);
+
 }
